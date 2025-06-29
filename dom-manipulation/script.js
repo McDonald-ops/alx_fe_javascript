@@ -133,14 +133,8 @@
 // // Initialize the app when DOM is loaded
 // document.addEventListener('DOMContentLoaded', init);
 
-// === script.js ===
 
-// Quote database (will be overridden by localStorage if present)
-// script.js
 
-// ───────────────
-// Quote database (overridden by localStorage if present)
-// ───────────────
 // script.js
 
 // ───────────────
@@ -160,6 +154,8 @@ let quotes = [
 // ───────────────
 const quoteDisplay = document.getElementById('quoteDisplay');
 const newQuoteBtn  = document.getElementById('newQuote');
+const exportBtn    = document.getElementById('exportBtn');
+const importInput  = document.getElementById('importFile');
 
 // ───────────────
 // Web Storage Helpers
@@ -186,7 +182,6 @@ function init() {
   loadQuotes();
   createAddQuoteForm();
   createCategorySelector();
-  createImportExportControls();
 
   const last = sessionStorage.getItem('lastQuote');
   if (last) {
@@ -196,6 +191,8 @@ function init() {
   }
 
   newQuoteBtn.addEventListener('click', showRandomQuote);
+  exportBtn.addEventListener('click', exportToJson);
+  importInput.addEventListener('change', importFromJsonFile);
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -230,36 +227,20 @@ function createCategorySelector() {
   document.getElementById('categorySelect').addEventListener('change', showRandomQuote);
 }
 
-function createImportExportControls() {
-  const ctrlDiv = document.createElement('div');
-  ctrlDiv.innerHTML = `
-    <button id="exportBtn">Export Quotes (JSON)</button>
-    <input type="file" id="importFile" accept=".json" />
-  `;
-  document.body.appendChild(ctrlDiv);
-
-  document.getElementById('exportBtn').addEventListener('click', exportToJson);
-  document.getElementById('importFile').addEventListener('change', importFromJsonFile);
-}
-
 // ───────────────
 // Core Functionality
 // ───────────────
 function updateCategorySelector() {
   const select = document.getElementById('categorySelect');
+  const cats   = ['all'];
 
-  // Always start with "all"
-  const categories = ['all'];
-
-  // Add only truthy, string categories
   quotes.forEach(q => {
-    if (typeof q.category === 'string' && q.category.trim() !== '' && !categories.includes(q.category)) {
-      categories.push(q.category);
+    if (typeof q.category === 'string' && q.category.trim() !== '' && !cats.includes(q.category)) {
+      cats.push(q.category);
     }
   });
 
-  // Build <option> elements safely
-  select.innerHTML = categories
+  select.innerHTML = cats
     .map(cat => {
       const label = cat === 'all'
         ? 'All Categories'
@@ -269,20 +250,27 @@ function updateCategorySelector() {
     .join('');
 }
 
-function showRandomQuote() {
-  const select    = document.getElementById('categorySelect');
-  const chosenCat = select.value;
-  const pool      = chosenCat === 'all'
-    ? quotes
-    : quotes.filter(q => q.category === chosenCat);
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
-  if (!pool.length) {
+function showRandomQuote() {
+  const sel     = document.getElementById('categorySelect');
+  const chosen  = sel.value;
+  const pool    = chosen === 'all'
+    ? quotes
+    : quotes.filter(q => q.category === chosen);
+
+  if (pool.length === 0) {
     quoteDisplay.innerHTML = '<p>No quotes found in this category.</p>';
   } else {
     const q = pool[Math.floor(Math.random() * pool.length)];
+    // Safely get category text
+    const catText = (typeof q.category === 'string') ? capitalize(q.category) : '';
+    
     quoteDisplay.innerHTML = `
       <blockquote>"${q.text}"</blockquote>
-      <p class="category">— ${q.category.charAt(0).toUpperCase() + q.category.slice(1)}</p>
+      <p class="category">${catText ? '— ' + catText : ''}</p>
     `;
   }
 
@@ -313,39 +301,35 @@ function addQuote() {
 // JSON Import / Export
 // ───────────────
 function exportToJson() {
-  const jsonStr = JSON.stringify(quotes, null, 2);
-  const blob    = new Blob([jsonStr], { type: 'application/json' });
-  const url     = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
+  const blob = new Blob([JSON.stringify(quotes, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
   a.href     = url;
   a.download = 'quotes.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-
   URL.revokeObjectURL(url);
 }
 
-function importFromJsonFile(event) {
-  const file = event.target.files[0];
+function importFromJsonFile(e) {
+  const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = evt => {
     try {
-      const imported = JSON.parse(e.target.result);
-      if (Array.isArray(imported)) {
-        quotes.push(...imported);
+      const data = JSON.parse(evt.target.result);
+      if (Array.isArray(data)) {
+        quotes.push(...data);
         saveQuotes();
         updateCategorySelector();
         alert('Quotes imported successfully!');
       } else {
-        throw new Error('JSON is not an array');
+        throw new Error('Not an array');
       }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to import: invalid JSON format.');
+    } catch {
+      alert('Invalid JSON file.');
     }
   };
   reader.readAsText(file);
