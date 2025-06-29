@@ -384,7 +384,7 @@ function loadQuotes() {
 }
 
 // ───────────────
-// UI Builder: Add‑Quote Form
+// UI: Add‑Quote Form
 // ───────────────
 function createAddQuoteForm() {
   const container = document.createElement('div');
@@ -401,7 +401,7 @@ function createAddQuoteForm() {
 }
 
 // ───────────────
-// Capitalize Helper (safe)
+// Capitalize Helper
 // ───────────────
 function capitalize(str) {
   return (typeof str === 'string' && str.length)
@@ -410,7 +410,7 @@ function capitalize(str) {
 }
 
 // ───────────────
-// Show a Random Quote
+// Show Random Quote
 // ───────────────
 function showRandomQuote() {
   if (!quotes.length) {
@@ -518,7 +518,7 @@ function importFromJsonFile(e) {
 }
 
 // ───────────────
-// Fetch from "Server", Merge & Resolve Conflicts
+// Fetch from "Server"
 // ───────────────
 async function fetchQuotesFromServer() {
   const res = await fetch(SERVER_URL);
@@ -528,14 +528,15 @@ async function fetchQuotesFromServer() {
 }
 
 // ───────────────
-// Sync Logic with POST
+// Sync with Server & Conflict Resolution
 // ───────────────
-async function syncWithServer(showNotification = false) {
+async function syncQuotes(showNotification = false) {
   try {
     const serverQuotes = await fetchQuotesFromServer();
     let additions = 0, overrides = 0;
     const localMap = new Map(quotes.map(q => [q.text, q]));
 
+    // merge server → local
     serverQuotes.forEach(sq => {
       if (localMap.has(sq.text)) {
         if (localMap.get(sq.text).category !== sq.category) {
@@ -557,9 +558,7 @@ async function syncWithServer(showNotification = false) {
     // POST merged data back to server
     await fetch(SERVER_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(quotes)
     });
 
@@ -595,11 +594,11 @@ function init() {
   exportBtn.addEventListener('click', exportToJson);
   importInput.addEventListener('change', importFromJsonFile);
   categoryFilter.addEventListener('change', filterQuotes);
-  syncNowBtn.addEventListener('click', () => syncWithServer(true));
+  syncNowBtn.addEventListener('click', () => syncQuotes(true));
 
-  // initial silent sync + periodic
-  syncWithServer();
-  setInterval(syncWithServer, 60000);
+  // automatic sync every 60s
+  syncQuotes();
+  setInterval(syncQuotes, 60000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
