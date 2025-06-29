@@ -520,7 +520,7 @@ function importFromJsonFile(e) {
 // ───────────────
 // Fetch from "Server"
 // ───────────────
-async function fetchQuotesFromServer() {
+async function fetchServerQuotes() {
   const res = await fetch(SERVER_URL);
   return res.json().then(data =>
     data.map(item => ({ text: item.body, category: 'server' }))
@@ -532,7 +532,7 @@ async function fetchQuotesFromServer() {
 // ───────────────
 async function syncQuotes(showNotification = false) {
   try {
-    const serverQuotes = await fetchQuotesFromServer();
+    const serverQuotes = await fetchServerQuotes();
     let additions = 0, overrides = 0;
     const localMap = new Map(quotes.map(q => [q.text, q]));
 
@@ -563,8 +563,7 @@ async function syncQuotes(showNotification = false) {
     });
 
     if (showNotification) {
-      syncStatus.textContent =
-        `Sync complete: ${additions} new, ${overrides} updated and posted.`;
+      syncStatus.textContent = 'Quotes synced with server!';
       syncStatus.style.display = 'block';
       setTimeout(() => (syncStatus.style.display = 'none'), 5000);
     }
@@ -596,7 +595,7 @@ function init() {
   categoryFilter.addEventListener('change', filterQuotes);
   syncNowBtn.addEventListener('click', () => syncQuotes(true));
 
-  // automatic sync every 60s
+  // initial silent sync + periodic
   syncQuotes();
   setInterval(syncQuotes, 60000);
 }
