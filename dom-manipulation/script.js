@@ -520,7 +520,7 @@ function importFromJsonFile(e) {
 // ───────────────
 // Fetch from "Server"
 // ───────────────
-async function fetchServerQuotes() {
+async function fetchQuotesFromServer() {
   const res = await fetch(SERVER_URL);
   return res.json().then(data =>
     data.map(item => ({ text: item.body, category: 'server' }))
@@ -532,7 +532,7 @@ async function fetchServerQuotes() {
 // ───────────────
 async function syncQuotes(showNotification = false) {
   try {
-    const serverQuotes = await fetchServerQuotes();
+    const serverQuotes = await fetchQuotesFromServer();
     let additions = 0, overrides = 0;
     const localMap = new Map(quotes.map(q => [q.text, q]));
 
