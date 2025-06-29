@@ -334,6 +334,20 @@
 // ───────────────
 // Quote database (overridden by localStorage if present)
 // ───────────────
+// 
+
+
+
+// script.js
+
+// ───────────────
+// Simulation: Mock "server" endpoint
+// ───────────────
+const SERVER_URL = 'https://jsonplaceholder.typicode.com/posts?_limit=5';
+
+// ───────────────
+// Quote database (overridden by localStorage if present)
+// ───────────────
 let quotes = [
   { text: "The only way to do great work is to love what you do.", category: "work" },
   { text: "Life is what happens when you're busy making other plans.", category: "life" },
@@ -351,6 +365,8 @@ const newQuoteBtn    = document.getElementById('newQuote');
 const exportBtn      = document.getElementById('exportBtn');
 const importInput    = document.getElementById('importFile');
 const categoryFilter = document.getElementById('categoryFilter');
+const syncStatus     = document.getElementById('syncStatus');
+const syncNowBtn     = document.getElementById('syncNowBtn');
 
 // ───────────────
 // Web Storage Helpers
@@ -362,11 +378,8 @@ function saveQuotes() {
 function loadQuotes() {
   const stored = localStorage.getItem('quotes');
   if (stored) {
-    try {
-      quotes = JSON.parse(stored);
-    } catch (e) {
-      console.error('Could not parse stored quotes:', e);
-    }
+    try { quotes = JSON.parse(stored); }
+    catch (e) { console.error('Could not parse stored quotes:', e); }
   }
 }
 
@@ -391,10 +404,9 @@ function createAddQuoteForm() {
 // Capitalize Helper (safe)
 // ───────────────
 function capitalize(str) {
-  if (typeof str !== 'string' || str.length === 0) {
-    return '';
-  }
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return (typeof str === 'string' && str.length)
+    ? str.charAt(0).toUpperCase() + str.slice(1)
+    : '';
 }
 
 // ───────────────
@@ -426,7 +438,6 @@ function addQuote() {
     alert('Please enter both a quote and a category');
     return;
   }
-
   quotes.push({ text, category: cat });
   saveQuotes();
   populateCategories();
@@ -440,17 +451,10 @@ function addQuote() {
 // Populate Filter Dropdown
 // ───────────────
 function populateCategories() {
-  const set = new Set(
-    quotes
-      .map(q => q.category)
-      .filter(c => typeof c === 'string' && c.trim())
-  );
-
+  const set = new Set(quotes.map(q => q.category).filter(c => typeof c === 'string' && c.trim()));
   categoryFilter.innerHTML = `
     <option value="all">All Categories</option>
-    ${Array.from(set)
-      .map(c => `<option value="${c}">${capitalize(c)}</option>`)
-      .join('')}
+    ${Array.from(set).map(c => `<option value="${c}">${capitalize(c)}</option>`).join('')}
   `;
 }
 
@@ -460,23 +464,18 @@ function populateCategories() {
 function filterQuotes() {
   const sel = categoryFilter.value;
   localStorage.setItem('lastFilter', sel);
-
-  const pool = sel === 'all'
-    ? quotes
-    : quotes.filter(q => q.category === sel);
+  const pool = sel === 'all' ? quotes : quotes.filter(q => q.category === sel);
 
   if (!pool.length) {
     quoteDisplay.innerHTML = '<p>No quotes found in this category.</p>';
   } else {
-    quoteDisplay.innerHTML = pool
-      .map(q => {
-        const catText = capitalize(q.category);
-        return `
-          <blockquote>"${q.text}"</blockquote>
-          ${catText ? `<p class="category">— ${catText}</p>` : ''}
-        `;
-      })
-      .join('');
+    quoteDisplay.innerHTML = pool.map(q => {
+      const catText = capitalize(q.category);
+      return `
+        <blockquote>"${q.text}"</blockquote>
+        ${catText ? `<p class="category">— ${catText}</p>` : ''}
+      `;
+    }).join('');
   }
 }
 
@@ -519,6 +518,63 @@ function importFromJsonFile(e) {
 }
 
 // ───────────────
+// Fetch from "Server", Merge & Resolve Conflicts
+// ───────────────
+async function fetchServerQuotes() {
+  const res = await fetch(SERVER_URL);
+  const data = await res.json();
+  // map to our format (body→text, default category "server")
+  return data.map(item => ({
+    text: item.body,
+    category: 'server'
+  }));
+}
+
+async function syncWithServer(showNotification = false) {
+  try {
+    const serverQuotes = await fetchServerQuotes();
+
+    let additions = 0, overrides = 0;
+    const localMap = new Map(quotes.map(q => [q.text, q]));
+
+    // server takes precedence
+    serverQuotes.forEach(sq => {
+      if (localMap.has(sq.text)) {
+        // override category if different
+        if (localMap.get(sq.text).category !== sq.category) {
+          localMap.get(sq.text).category = sq.category;
+          overrides++;
+        }
+      } else {
+        // new quote from server
+        quotes.push(sq);
+        additions++;
+      }
+    });
+
+    if (additions || overrides) {
+      saveQuotes();
+      populateCategories();
+      filterQuotes();
+    }
+
+    if (showNotification) {
+      syncStatus.textContent =
+        `Sync complete: ${additions} new, ${overrides} updated.`;
+      syncStatus.style.display = 'block';
+      setTimeout(() => syncStatus.style.display = 'none', 5000);
+    }
+  } catch (e) {
+    console.error('Sync failed:', e);
+    if (showNotification) {
+      syncStatus.textContent = 'Sync failed – check console.';
+      syncStatus.style.display = 'block';
+      setTimeout(() => syncStatus.style.display = 'none', 5000);
+    }
+  }
+}
+
+// ───────────────
 // Initialization
 // ───────────────
 function init() {
@@ -530,10 +586,16 @@ function init() {
   categoryFilter.value = last;
   filterQuotes();
 
+  // Event bindings
   newQuoteBtn.addEventListener('click', showRandomQuote);
   exportBtn.addEventListener('click', exportToJson);
   importInput.addEventListener('change', importFromJsonFile);
   categoryFilter.addEventListener('change', filterQuotes);
+  syncNowBtn.addEventListener('click', () => syncWithServer(true));
+
+  // Periodic sync every 60s
+  syncWithServer();              // initial silent sync
+  setInterval(syncWithServer, 60000);
 }
 
 document.addEventListener('DOMContentLoaded', init);

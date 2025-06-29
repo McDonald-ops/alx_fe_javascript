@@ -140,7 +140,7 @@
 </html> --> 
 
 
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -160,7 +160,55 @@
   </style>
 </head>
 <body>
+  <h1>Dynamic Quote Generator</h1> -->
+
+  <!-- Quote display area -->
+  <!-- <div id="quoteDisplay"></div> -->
+
+  <!-- Controls -->
+  <!-- <button id="newQuote">Show New Quote</button>
+  <button id="exportBtn">Export Quotes</button>
+  <input type="file" id="importFile" accept=".json" /> -->
+
+  <!-- **New**: Category filter dropdown -->
+  <!-- <label for="categoryFilter">Filter by category:</label>
+  <select id="categoryFilter">
+    <option value="all">All Categories</option> -->
+    <!-- dynamically populated -->
+  <!-- </select>
+
+  <script src="script.js"></script>
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dynamic Quote Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:800px; margin:0 auto; padding:20px; line-height:1.6; }
+    h1,h2 { color:#333; }
+    #syncStatus { margin: 10px 0; padding: 10px; background: #eef; border: 1px solid #99c; display: none; }
+    #quoteDisplay { margin:30px 0; padding:20px; background:#f9f9f9; border-left:5px solid #3498db; }
+    blockquote { font-style:italic; font-size:1.2em; margin:0 0 10px; }
+    .category { font-weight:bold; color:#555; margin:0 0 15px; }
+    button,input,select { padding:8px 12px; margin:5px 0; }
+    button { background:#3498db; color:#fff; border:none; cursor:pointer; }
+    button:hover { background:#2980b9; }
+    input,select { border:1px solid #ddd; width:100%; max-width:300px; display:block; }
+    label { display:block; margin-top:15px; }
+  </style>
+</head>
+<body>
   <h1>Dynamic Quote Generator</h1>
+
+  <!-- Sync status / notifications -->
+  <div id="syncStatus"></div>
+  <button id="syncNowBtn">Sync Now</button>
 
   <!-- Quote display area -->
   <div id="quoteDisplay"></div>
@@ -170,7 +218,7 @@
   <button id="exportBtn">Export Quotes</button>
   <input type="file" id="importFile" accept=".json" />
 
-  <!-- **New**: Category filter dropdown -->
+  <!-- Category filter dropdown -->
   <label for="categoryFilter">Filter by category:</label>
   <select id="categoryFilter">
     <option value="all">All Categories</option>
@@ -180,3 +228,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
