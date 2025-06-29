@@ -520,33 +520,29 @@ function importFromJsonFile(e) {
 // ───────────────
 // Fetch from "Server", Merge & Resolve Conflicts
 // ───────────────
-async function  fetchQuotesFromServer() {
+async function fetchQuotesFromServer() {
   const res = await fetch(SERVER_URL);
-  const data = await res.json();
-  // map to our format (body→text, default category "server")
-  return data.map(item => ({
-    text: item.body,
-    category: 'server'
-  }));
+  return res.json().then(data =>
+    data.map(item => ({ text: item.body, category: 'server' }))
+  );
 }
 
+// ───────────────
+// Sync Logic with POST
+// ───────────────
 async function syncWithServer(showNotification = false) {
   try {
-    const serverQuotes = await  fetchQuotesFromServer();
-
+    const serverQuotes = await fetchQuotesFromServer();
     let additions = 0, overrides = 0;
     const localMap = new Map(quotes.map(q => [q.text, q]));
 
-    // server takes precedence
     serverQuotes.forEach(sq => {
       if (localMap.has(sq.text)) {
-        // override category if different
         if (localMap.get(sq.text).category !== sq.category) {
           localMap.get(sq.text).category = sq.category;
           overrides++;
         }
       } else {
-        // new quote from server
         quotes.push(sq);
         additions++;
       }
@@ -558,18 +554,27 @@ async function syncWithServer(showNotification = false) {
       filterQuotes();
     }
 
+    // POST merged data back to server
+    await fetch(SERVER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(quotes)
+    });
+
     if (showNotification) {
       syncStatus.textContent =
-        `Sync complete: ${additions} new, ${overrides} updated.`;
+        `Sync complete: ${additions} new, ${overrides} updated and posted.`;
       syncStatus.style.display = 'block';
-      setTimeout(() => syncStatus.style.display = 'none', 5000);
+      setTimeout(() => (syncStatus.style.display = 'none'), 5000);
     }
   } catch (e) {
     console.error('Sync failed:', e);
     if (showNotification) {
       syncStatus.textContent = 'Sync failed – check console.';
       syncStatus.style.display = 'block';
-      setTimeout(() => syncStatus.style.display = 'none', 5000);
+      setTimeout(() => (syncStatus.style.display = 'none'), 5000);
     }
   }
 }
@@ -580,21 +585,20 @@ async function syncWithServer(showNotification = false) {
 function init() {
   loadQuotes();
   createAddQuoteForm();
-
   populateCategories();
+
   const last = localStorage.getItem('lastFilter') || 'all';
   categoryFilter.value = last;
   filterQuotes();
 
-  // Event bindings
   newQuoteBtn.addEventListener('click', showRandomQuote);
   exportBtn.addEventListener('click', exportToJson);
   importInput.addEventListener('change', importFromJsonFile);
   categoryFilter.addEventListener('change', filterQuotes);
   syncNowBtn.addEventListener('click', () => syncWithServer(true));
 
-  // Periodic sync every 60s
-  syncWithServer();              // initial silent sync
+  // initial silent sync + periodic
+  syncWithServer();
   setInterval(syncWithServer, 60000);
 }
 
